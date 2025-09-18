@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photobooth</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: url('./BGmain.png') no-repeat center center/cover;
+        }
+        video {
+            width: 400px;
+            height: 400px;
+            border: 2px solid black;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            background: red;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: darkred;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay></video>
+    <button id="capture">Capture</button>
+    <script>
+        const video = document.getElementById('video');
+        const captureButton = document.getElementById('capture');
+        let capturedImages = [];
+
+        // Access the webcam
+        navigator.mediaDevices.getUserMedia({ video: { width: 200, height: 200 } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam:", err);
+            });
+
+        // Capture Image on Click
+        captureButton.addEventListener('click', () => {
+            if (capturedImages.length < 3) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 200;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, 200, 200);
+                capturedImages.push(canvas.toDataURL());
+            }
+            
+            if (capturedImages.length === 3) {
+                openNewTabWithPhotoStrip();
+            }
+        });
+
+        function openNewTabWithPhotoStrip() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 800; // 3 images + image section
+            const context = canvas.getContext('2d');
+
+            let imagesLoaded = 0;
+            capturedImages.forEach((image, index) => {
+                const img = new Image();
+                img.src = image;
+                img.onload = () => {
+                    context.drawImage(img, 0, index * 200, 200, 200);
+                    imagesLoaded++;
+                    if (imagesLoaded === 3) {
+                        addImageToCanvas(context, canvas);
+                    }
+                };
+            });
+        }
+
+        function addImageToCanvas(context, canvas) {
+            const image = new Image();
+            image.src = "VDay.png"; // Ensure this file exists in the correct directory
+            image.onload = () => {
+                context.drawImage(image, 0, 600, 200, 200); // Place at the bottom of the photo strip
+                
+                // Open new tab with the final image
+                setTimeout(() => {
+                    const newWindow = window.open("", "_blank");
+                    if (newWindow) {
+                        newWindow.document.write(`
+                            <html>
+                            <head>
+                                <title>Photo Strip</title>
+                                <style>
+                                    body {
+                                        display: flex;
+                                        flex-direction: column;
+                                        align-items: center;
+                                        justify-content: center;
+                                        height: 100vh;
+                                        background: url('BGStrip.png') no-repeat center center/cover;
+                                        background-size: cover;
+                                    }
+                                    a {
+                                        display: block;
+                                        margin-top: 20px;
+                                        text-decoration: none;
+                                        background: #000;
+                                        color: #fff;
+                                        padding: 10px;
+                                        border-radius: 5px;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <img src='${canvas.toDataURL()}' width='200' height='800' style='border: 2px solid black; display: block; margin-top: 20px;'/>
+                                <a href='${canvas.toDataURL()}' download='photo_strip.png'>Download Photo Strip</a>
+                            </body>
+                            </html>
+                        `);
+                    } else {
+                        alert("Pop-up blocked! Please allow pop-ups for this site.");
+                    }
+                }, 100); // Short delay to ensure image is drawn before opening the new tab
+            };
+
+            image.onerror = () => {
+                console.error("Error loading VDay.png. Check the file path.");
+                alert("Error loading VDay.png! Make sure the image is in the correct location.");
+            };
+        }
+    </script>
+</body>
+</html>
